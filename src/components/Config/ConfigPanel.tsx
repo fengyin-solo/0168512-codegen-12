@@ -15,8 +15,12 @@ export function ConfigPanel() {
   const {
     config,
     errors,
+    activePreset,
     updateConfig,
     resetConfig,
+    switchPreset,
+    setTemperature,
+    setMaxTokens,
     validateCurrentConfig,
   } = useConfigStore();
 
@@ -86,8 +90,10 @@ export function ConfigPanel() {
           <ParameterSlider
             temperature={config.temperature}
             maxTokens={config.maxTokens}
-            onTemperatureChange={(value) => updateConfig({ temperature: value })}
-            onMaxTokensChange={(value) => updateConfig({ maxTokens: value })}
+            activePreset={activePreset}
+            onTemperatureChange={(value) => setTemperature(value)}
+            onMaxTokensChange={(value) => setMaxTokens(value)}
+            onPresetChange={switchPreset}
           />
         </section>
       </div>

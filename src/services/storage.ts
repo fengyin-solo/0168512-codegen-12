@@ -1,11 +1,13 @@
-import type { AppConfig, Conversation, PromptTemplate } from '../types';
-import { DEFAULT_CONFIG, DEFAULT_TEMPLATES } from '../types';
+import type { AppConfig, Conversation, PromptTemplate, PresetKey, ParameterPresets } from '../types';
+import { DEFAULT_CONFIG, DEFAULT_TEMPLATES, DEFAULT_PRESETS, DEFAULT_PRESET, PRESET_ORDER, PARAMETER_LIMITS } from '../types';
 
 // Storage keys
 const STORAGE_KEYS = {
   CONFIG: 'react-chat-config',
   CONVERSATIONS: 'react-chat-conversations',
   PROMPT_TEMPLATES: 'react-chat-prompt-templates',
+  PARAMETER_PRESETS: 'react-chat-parameter-presets',
+  ACTIVE_PRESET: 'react-chat-active-preset',
 } as const;
 
 /**
@@ -102,6 +104,115 @@ export function clearConfig(): void {
 }
 
 /**
+ * 判断值是否为可参与计算的有限数字
+ */
+function isFiniteNumber(value: unknown): value is number {
+  return typeof value === 'number' && Number.isFinite(value);
+}
+
+/**
+ * 校验单个预设参数是否合法（temperature: 0-2；maxTokens: 100-8192 的整数）
+ */
+function isValidPresetParams(value: unknown): value is ParameterPresets[PresetKey] {
+  if (!value || typeof value !== 'object') {
+    return false;
+  }
+  const { temperature, maxTokens } = value as Record<string, unknown>;
+  const { temperature: tempLimit, maxTokens: tokenLimit } = PARAMETER_LIMITS;
+  return (
+    isFiniteNumber(temperature) &&
+    temperature >= tempLimit.min &&
+    temperature <= tempLimit.max &&
+    isFiniteNumber(maxTokens) &&
+    Number.isInteger(maxTokens) &&
+    maxTokens >= tokenLimit.min &&
+    maxTokens <= tokenLimit.max
+  );
+}
+
+/**
+ * 规范化三套预设：缺失或非法的单项回退为对应默认值，保证每份预设始终可用
+ */
+function normalizePresets(raw: unknown): ParameterPresets {
+  const source = (raw && typeof raw === 'object' ? raw : {}) as Partial<Record<PresetKey, unknown>>;
+  const result = { ...DEFAULT_PRESETS };
+  for (const key of PRESET_ORDER) {
+    const preset = source[key];
+    if (isValidPresetParams(preset)) {
+      result[key] = { temperature: preset.temperature, maxTokens: preset.maxTokens };
+    }
+  }
+  return result;
+}
+
+/**
+ * 保存三套参数预设到 localStorage
+ * @param presets 预设集合
+ */
+export function saveParameterPresets(presets: ParameterPresets): void {
+  try {
+    localStorage.setItem(STORAGE_KEYS.PARAMETER_PRESETS, JSON.stringify(presets));
+  } catch (error) {
+    console.error('Failed to save parameter presets:', error);
+    throw new Error('保存参数预设失败');
+  }
+}
+
+/**
+ * 深拷贝默认预设，避免外部修改污染常量
+ */
+function cloneDefaultPresets(): ParameterPresets {
+  return Object.fromEntries(
+    PRESET_ORDER.map((key) => [key, { ...DEFAULT_PRESETS[key] }]),
+  ) as ParameterPresets;
+}
+
+/**
+ * 从 localStorage 加载三套参数预设
+ * @returns 预设集合，不存在或数据损坏时返回默认预设
+ */
+export function loadParameterPresets(): ParameterPresets {
+  try {
+    const stored = localStorage.getItem(STORAGE_KEYS.PARAMETER_PRESETS);
+    if (!stored) {
+      return cloneDefaultPresets();
+    }
+    return normalizePresets(JSON.parse(stored));
+  } catch (error) {
+    console.error('Failed to load parameter presets:', error);
+    return cloneDefaultPresets();
+  }
+}
+
+/**
+ * 保存当前激活的预设标识
+ * @param key 预设标识
+ */
+export function saveActivePreset(key: PresetKey): void {
+  try {
+    localStorage.setItem(STORAGE_KEYS.ACTIVE_PRESET, key);
+  } catch (error) {
+    console.error('Failed to save active preset:', error);
+  }
+}
+
+/**
+ * 加载当前激活的预设标识
+ * @returns 预设标识，不存在或非法时返回默认预设
+ */
+export function loadActivePreset(): PresetKey {
+  try {
+    const stored = localStorage.getItem(STORAGE_KEYS.ACTIVE_PRESET);
+    if (stored && (PRESET_ORDER as string[]).includes(stored)) {
+      return stored as PresetKey;
+    }
+  } catch (error) {
+    console.error('Failed to load active preset:', error);
+  }
+  return DEFAULT_PRESET;
+}
+
+/**
  * 保存对话列表到 localStorage
  * @param conversations 对话列表
  */
@@ -171,6 +282,12 @@ export function clearConversations(): void {
 export function clearAllStorage(): void {
   clearConfig();
   clearConversations();
+  try {
+    localStorage.removeItem(STORAGE_KEYS.PARAMETER_PRESETS);
+    localStorage.removeItem(STORAGE_KEYS.ACTIVE_PRESET);
+  } catch (error) {
+    console.error('Failed to clear parameter presets:', error);
+  }
 }
 
 /**

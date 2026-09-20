@@ -36,3 +36,19 @@
   font-size: var(--font-size-xs);
   color: var(--color-text-tertiary);
 }
+
+/* 当前激活预设在滑块刻度上的高亮标识 */
+.parameter-slider .preset-mark {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-tertiary);
+  transition: color 0.2s ease;
+}
+
+.parameter-slider .preset-mark-active {
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-primary);
+}
+
+.parameter-slider .ant-slider-mark-text-active .preset-mark {
+  color: inherit;
+}
