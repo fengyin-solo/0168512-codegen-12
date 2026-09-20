@@ -31,6 +31,25 @@
   font-size: var(--font-size-xs);
 }
 
+.parameter-error {
+  font-size: var(--font-size-xs);
+}
+
+/* Preset switcher */
+.preset-switcher {
+  margin-bottom: var(--spacing-xs);
+}
+
+/* 滑块刻度上的预设标记 */
+.preset-mark {
+  transition: color var(--transition-fast);
+}
+
+.preset-mark-active {
+  color: var(--color-primary);
+  font-weight: var(--font-weight-semibold);
+}
+
 /* Slider customization */
 .parameter-slider .ant-slider-mark-text {
   font-size: var(--font-size-xs);

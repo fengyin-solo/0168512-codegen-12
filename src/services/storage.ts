@@ -1,5 +1,6 @@
-import type { AppConfig, Conversation, PromptTemplate } from '../types';
-import { DEFAULT_CONFIG, DEFAULT_TEMPLATES } from '../types';
+import type { AppConfig, Conversation, PromptTemplate, PresetId, ParameterPreset } from '../types';
+import { DEFAULT_CONFIG, DEFAULT_PRESETS, DEFAULT_TEMPLATES, PRESET_IDS } from '../types';
+import { validateParameterValue } from '../utils/validators';
 
 // Storage keys
 const STORAGE_KEYS = {
@@ -71,18 +72,57 @@ export function saveConfig(config: AppConfig): void {
 export function loadConfig(): AppConfig {
   try {
     const stored = localStorage.getItem(STORAGE_KEYS.CONFIG);
-    
+
     if (!stored) {
       return DEFAULT_CONFIG;
     }
-    
-    const parsed = JSON.parse(stored) as AppConfig;
-    
-    // 解密 API Key
+
+    const parsed = JSON.parse(stored) as Partial<AppConfig>;
+
+    // 当前预设：非法值回退到“平衡”
+    const activePreset: PresetId = PRESET_IDS.includes(parsed.activePreset as PresetId)
+      ? (parsed.activePreset as PresetId)
+      : 'balanced';
+
+    // 预设逐套、逐字段合并：缺失或非法的字段回退默认值，
+    // 任何一套数据损坏都不会影响另外两套
+    const presets: Record<PresetId, ParameterPreset> = {
+      precise: { ...DEFAULT_PRESETS.precise },
+      balanced: { ...DEFAULT_PRESETS.balanced },
+      creative: { ...DEFAULT_PRESETS.creative },
+    };
+
+    if (parsed.presets && typeof parsed.presets === 'object') {
+      for (const id of PRESET_IDS) {
+        const storedPreset = parsed.presets[id];
+        if (!storedPreset || typeof storedPreset !== 'object') continue;
+        if (validateParameterValue('temperature', storedPreset.temperature) === null) {
+          presets[id].temperature = storedPreset.temperature;
+        }
+        if (validateParameterValue('maxTokens', storedPreset.maxTokens) === null) {
+          presets[id].maxTokens = storedPreset.maxTokens;
+        }
+      }
+    } else {
+      // 旧版本数据没有预设字段：把当前温度/最大长度归入当前预设，避免丢失
+      if (validateParameterValue('temperature', parsed.temperature) === null) {
+        presets[activePreset].temperature = parsed.temperature as number;
+      }
+      if (validateParameterValue('maxTokens', parsed.maxTokens) === null) {
+        presets[activePreset].maxTokens = parsed.maxTokens as number;
+      }
+    }
+
     return {
       ...DEFAULT_CONFIG,
       ...parsed,
-      apiKey: decrypt(parsed.apiKey),
+      // 解密 API Key
+      apiKey: decrypt(parsed.apiKey ?? ''),
+      activePreset,
+      presets,
+      // 当前读数始终以当前预设为准
+      temperature: presets[activePreset].temperature,
+      maxTokens: presets[activePreset].maxTokens,
     };
   } catch (error) {
     console.error('Failed to load config:', error);

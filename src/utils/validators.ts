@@ -1,4 +1,35 @@
 import type { AppConfig, ConfigValidation } from '../types';
+import { PARAM_RANGES } from '../types';
+
+/**
+ * 校验单个数值参数，返回错误原因；合法时返回 null
+ * @param param 参数名（temperature / maxTokens）
+ * @param value 待校验的值（可能来自输入框，类型未知）
+ * @returns 错误原因；合法时返回 null
+ */
+export function validateParameterValue(
+  param: 'temperature' | 'maxTokens',
+  value: unknown,
+): string | null {
+  const label = param === 'temperature' ? 'Temperature' : 'Max Tokens';
+
+  // 不是有效数字（空输入、非数字内容、NaN、Infinity）
+  if (typeof value !== 'number' || Number.isNaN(value) || !Number.isFinite(value)) {
+    return `${label} 需要输入有效的数字`;
+  }
+
+  // 超出滑块允许的范围
+  const range = PARAM_RANGES[param];
+  if (value < range.min || value > range.max) {
+    return `${label} 需在 ${range.min} ~ ${range.max} 之间`;
+  }
+
+  if (param === 'maxTokens' && !Number.isInteger(value)) {
+    return 'Max Tokens 需为整数';
+  }
+
+  return null;
+}
 
 /**
  * 验证 API 密钥格式

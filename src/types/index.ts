@@ -26,6 +26,9 @@ export type {
   APIConfig,
   ModelInfo,
   ConfigValidation,
+  PresetId,
+  ParameterPreset,
+  ConfigUpdates,
 } from './config'
 
 export type {
@@ -35,5 +38,12 @@ export type {
   DefaultCategory,
 } from './promptTemplate'
 
-export { AVAILABLE_MODELS, DEFAULT_CONFIG } from './config'
+export {
+  AVAILABLE_MODELS,
+  DEFAULT_CONFIG,
+  DEFAULT_PRESETS,
+  PRESET_IDS,
+  PRESET_LABELS,
+  PARAM_RANGES,
+} from './config'
 export { DEFAULT_CATEGORIES, DEFAULT_TEMPLATES } from './promptTemplate'

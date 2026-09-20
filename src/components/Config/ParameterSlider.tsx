@@ -1,5 +1,7 @@
 
-import { Slider, InputNumber, Typography, Row, Col } from 'antd';
+import { Slider, InputNumber, Typography, Row, Col, Segmented } from 'antd';
+import type { PresetId } from '../../types';
+import { PRESET_IDS, PRESET_LABELS } from '../../types';
 import './ParameterSlider.css';
 
 const { Text } = Typography;
@@ -7,8 +9,12 @@ const { Text } = Typography;
 interface ParameterSliderProps {
   temperature: number;
   maxTokens: number;
+  activePreset: PresetId;
+  temperatureError?: string;
+  maxTokensError?: string;
   onTemperatureChange: (value: number) => void;
-  onMaxTokensChange: (value: number) => void;
+  onMaxTokensChange: (value: number | null) => void;
+  onPresetChange: (preset: PresetId) => void;
 }
 
 /**
@@ -17,11 +23,31 @@ interface ParameterSliderProps {
 export function ParameterSlider({
   temperature,
   maxTokens,
+  activePreset,
+  temperatureError,
+  maxTokensError,
   onTemperatureChange,
   onMaxTokensChange,
+  onPresetChange,
 }: ParameterSliderProps) {
+  // 刻度上高亮当前预设，让滑块当前落在哪一套一目了然
+  const presetMark = (id: PresetId) => (
+    <span className={`preset-mark${activePreset === id ? ' preset-mark-active' : ''}`}>
+      {PRESET_LABELS[id]}
+    </span>
+  );
+
   return (
     <div className="parameter-slider">
+      {/* 预设切换：精确 / 平衡 / 创意 */}
+      <Segmented
+        block
+        className="preset-switcher"
+        options={PRESET_IDS.map((id) => ({ label: PRESET_LABELS[id], value: id }))}
+        value={activePreset}
+        onChange={(value) => onPresetChange(value as PresetId)}
+      />
+
       {/* Temperature */}
       <div className="parameter-item">
         <div className="parameter-header">
@@ -37,14 +63,20 @@ export function ParameterSlider({
           value={temperature}
           onChange={onTemperatureChange}
           marks={{
-            0: '精确',
-            1: '平衡',
-            2: '创意',
+            0: presetMark('precise'),
+            1: presetMark('balanced'),
+            2: presetMark('creative'),
           }}
         />
-        <Text type="secondary" className="parameter-hint">
-          较低的值使输出更确定，较高的值使输出更随机
-        </Text>
+        {temperatureError ? (
+          <Text type="danger" className="parameter-error">
+            {temperatureError}
+          </Text>
+        ) : (
+          <Text type="secondary" className="parameter-hint">
+            较低的值使输出更确定，较高的值使输出更随机
+          </Text>
+        )}
       </div>
 
       {/* Max Tokens */}
@@ -68,14 +100,21 @@ export function ParameterSlider({
               max={8192}
               step={100}
               value={maxTokens}
-              onChange={(value) => value && onMaxTokensChange(value)}
+              onChange={(value) => onMaxTokensChange(value)}
+              status={maxTokensError ? 'error' : undefined}
               style={{ width: '100%' }}
             />
           </Col>
         </Row>
-        <Text type="secondary" className="parameter-hint">
-          控制回复的最大长度
-        </Text>
+        {maxTokensError ? (
+          <Text type="danger" className="parameter-error">
+            {maxTokensError}
+          </Text>
+        ) : (
+          <Text type="secondary" className="parameter-hint">
+            控制回复的最大长度
+          </Text>
+        )}
       </div>
     </div>
   );
